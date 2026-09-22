@@ -3,7 +3,7 @@ use fields::{OpenSimplex, normalize, sample};
 use image::{GrayImage, ImageBuffer};
 
 fn generate_world(seed: u32, world_size: usize) -> Vec<f32> {
-    let noise = OpenSimplex { seed, scale: 16.0 };
+    let noise = OpenSimplex::new(seed, 16.0);
 
     let elevation = sample(&noise, world_size, world_size);
     let elevation_normalized = normalize(&elevation);
@@ -13,7 +13,7 @@ fn generate_world(seed: u32, world_size: usize) -> Vec<f32> {
 
 fn main() {
     let seed = 0;
-    let world_size = 256;
+    let world_size = 1600;
 
     let elevation = generate_world(seed, world_size);
 
