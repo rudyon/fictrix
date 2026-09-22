@@ -4,12 +4,12 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from field import normalize, simplex
+from field import simplex
 
 
 def generate_world(seed=0):
 
-    elevation = normalize(simplex(seed=seed, octave=4.0).array(256, 256))
+    elevation = simplex(seed=seed, octave=4.0).sample(256, 256).normalize().array
 
     biomes = np.zeros((256, 256, 4), dtype=np.uint8)
     for i in range(256):

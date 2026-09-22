@@ -10,18 +10,45 @@ class Field:
     def __call__(self, x: float, y: float) -> float:
         return self.function(x, y)
 
-    def array(self, width: int, height: int) -> np.ndarray:
-        arr = np.zeros((height, width), dtype=np.float32)
+    def sample(self, width: int, height: int) -> "Sample":
+        return Sample(self, width, height)
+
+    def normalize(self, width: int = 256, height: int = 256) -> "Field":
+        sample = self.sample(width, height)
+        min_val, max_val = sample.range()
+
+        def normalized_function(x: float, y: float) -> float:
+            return (self(x, y) - min_val) / (max_val - min_val)
+
+        return Field(normalized_function)
+
+
+class Sample:
+    def __init__(self, field: Field, width: int, height: int):
+        self.field = field
+        self.width = width
+        self.height = height
+        self.array = np.zeros((height, width), dtype=float)
+
         for i in range(height):
             for j in range(width):
-                arr[i, j] = self.function(j / width, i / height)
-        return arr
+                x = j / (width - 1)
+                y = i / (height - 1)
+                self.array[i, j] = field(x, y)
 
+    def range(self) -> tuple[float, float]:
+        return np.min(self.array), np.max(self.array)
 
-def normalize(arr: np.ndarray) -> np.ndarray:
-    min_val = np.min(arr)
-    max_val = np.max(arr)
-    return (arr - min_val) / (max_val - min_val)
+    def normalize(self) -> "Sample":
+        min_val, max_val = self.range()
+
+        normalized_sample = Sample.__new__(Sample)
+        normalized_sample.field = self.field
+        normalized_sample.width = self.width
+        normalized_sample.height = self.height
+        normalized_sample.array = (self.array - min_val) / (max_val - min_val)
+
+        return normalized_sample
 
 
 def simplex(seed: int = 0, octave: float = 1.0) -> Field:
