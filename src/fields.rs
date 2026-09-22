@@ -1,27 +1,28 @@
-trait Field {
+use noise::{NoiseFn, OpenSimplex as NoiseOpenSimplex};
+
+pub(crate) trait Field {
     fn evaluate(&self, x: f32, y: f32) -> f32;
 }
 
-struct Sample {
+pub(crate) struct Sample {
     pub width: usize,
     pub height: usize,
     pub array: Vec<f32>,
 }
 
-struct Normalized<F> {
-    field: F,
-    min: f32,
-    max: f32,
+pub(crate) struct OpenSimplex {
+    pub(crate) seed: u32,
+    pub(crate) scale: f32,
 }
 
-impl<F: Field> Field for Normalized<F> {
+impl Field for OpenSimplex {
     fn evaluate(&self, x: f32, y: f32) -> f32 {
-        let value = self.field.evaluate(x, y);
-        (value - self.min) / (self.max - self.min)
+        let noise = NoiseOpenSimplex::new(self.seed);
+        noise.get([x as f64 / self.scale as f64, y as f64 / self.scale as f64]) as f32
     }
 }
 
-fn sample<F: Field>(field: &F, width: usize, height: usize) -> Sample {
+pub(crate) fn sample<F: Field>(field: &F, width: usize, height: usize) -> Sample {
     let mut array = vec![0.0; width * height];
 
     for i in 0..height {
@@ -40,7 +41,7 @@ fn sample<F: Field>(field: &F, width: usize, height: usize) -> Sample {
     }
 }
 
-fn normalize(sample: &Sample) -> Sample {
+pub(crate) fn normalize(sample: &Sample) -> Sample {
     let min = sample.array.iter().copied().fold(f32::INFINITY, f32::min);
     let max = sample
         .array
@@ -59,16 +60,4 @@ fn normalize(sample: &Sample) -> Sample {
         height: sample.height,
         array,
     }
-}
-
-fn normalize_field<F: Field>(field: F, width: usize, height: usize) -> Normalized<F> {
-    let sample = sample(&field, width, height);
-    let min = sample.array.iter().copied().fold(f32::INFINITY, f32::min);
-    let max = sample
-        .array
-        .iter()
-        .copied()
-        .fold(f32::NEG_INFINITY, f32::max);
-
-    Normalized { field, min, max }
 }
