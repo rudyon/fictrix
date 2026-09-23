@@ -1,3 +1,4 @@
+use crate::indicators::progress_bar;
 use noise::{Fbm, MultiFractal, NoiseFn};
 
 // Core trait
@@ -15,6 +16,16 @@ pub struct Constant {
     value: f32,
 }
 
+pub struct DistanceToPoint {
+    point: (f32, f32),
+}
+
+pub struct NormalizedField<F> {
+    field: F,
+    min: f32,
+    max: f32,
+}
+
 pub struct Abs<F> {
     field: F,
 }
@@ -29,6 +40,26 @@ pub struct Sub<A, B> {
     right: B,
 }
 
+pub struct Negate<F> {
+    field: F,
+}
+
+pub struct Mul<A, B> {
+    left: A,
+    right: B,
+}
+
+pub struct Add<A, B> {
+    left: A,
+    right: B,
+}
+
+pub struct Clamp<F> {
+    field: F,
+    min: f32,
+    max: f32,
+}
+
 // Constructors / implementations
 impl Field for OpenSimplex {
     fn evaluate(&self, x: f32, y: f32) -> f32 {
@@ -39,6 +70,21 @@ impl Field for OpenSimplex {
 impl Field for Constant {
     fn evaluate(&self, _x: f32, _y: f32) -> f32 {
         self.value
+    }
+}
+
+impl Field for DistanceToPoint {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        let dx = x - self.point.0;
+        let dy = y - self.point.1;
+        (dx * dx + dy * dy).sqrt()
+    }
+}
+
+impl<F: Field> Field for NormalizedField<F> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        let value = self.field.evaluate(x, y);
+        (value - self.min) / (self.max - self.min)
     }
 }
 
@@ -79,6 +125,31 @@ impl<A: Field, B: Field> Field for Sub<A, B> {
     }
 }
 
+impl<F: Field> Field for Negate<F> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        -self.field.evaluate(x, y)
+    }
+}
+
+impl<A: Field, B: Field> Field for Mul<A, B> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        self.left.evaluate(x, y) * self.right.evaluate(x, y)
+    }
+}
+
+impl<A: Field, B: Field> Field for Add<A, B> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        self.left.evaluate(x, y) + self.right.evaluate(x, y)
+    }
+}
+
+impl<F: Field> Field for Clamp<F> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        let value = self.field.evaluate(x, y);
+        value.clamp(self.min, self.max)
+    }
+}
+
 pub fn opensimplex(
     seed: u32,
     amplitude: f32,
@@ -101,7 +172,36 @@ pub fn constant(value: f32) -> Constant {
     Constant { value }
 }
 
+pub fn distance_to_point(x: f32, y: f32) -> DistanceToPoint {
+    DistanceToPoint { point: (x, y) }
+}
+
 // Field operations
+pub fn normalize_field<F: Field>(field: F, width: usize, height: usize) -> NormalizedField<F> {
+    let bar = progress_bar((width * height) as u64, "Normalizing");
+
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+
+    for i in 0..height {
+        for j in 0..width {
+            let x = j as f32 - width as f32 / 2.0;
+            let y = i as f32 - height as f32 / 2.0;
+            let value = field.evaluate(x, y);
+            if value < min {
+                min = value;
+            }
+            if value > max {
+                max = value;
+            }
+            bar.inc(1);
+        }
+    }
+    bar.finish();
+
+    NormalizedField { field, min, max }
+}
+
 pub fn abs<F: Field>(field: F) -> Abs<F> {
     Abs { field }
 }
@@ -114,6 +214,22 @@ pub fn sub<A: Field, B: Field>(left: A, right: B) -> Sub<A, B> {
     Sub { left, right }
 }
 
+pub fn negate<F: Field>(field: F) -> Negate<F> {
+    Negate { field }
+}
+
+pub fn mul<A: Field, B: Field>(left: A, right: B) -> Mul<A, B> {
+    Mul { left, right }
+}
+
+pub fn add<A: Field, B: Field>(left: A, right: B) -> Add<A, B> {
+    Add { left, right }
+}
+
+pub fn clamp<F: Field>(field: F, min: f32, max: f32) -> Clamp<F> {
+    Clamp { field, min, max }
+}
+
 // Sampling
 pub struct Sample {
     pub width: usize,
@@ -122,16 +238,19 @@ pub struct Sample {
 }
 
 pub fn sample<F: Field>(field: &F, width: usize, height: usize) -> Sample {
+    let bar = progress_bar((width * height) as u64, "Sampling");
     let mut array = vec![0.0; width * height];
 
     for i in 0..height {
         for j in 0..width {
-            let x = j as f32 + width as f32 / 2.0;
-            let y = i as f32 + height as f32 / 2.0;
+            let x = j as f32 - width as f32 / 2.0; // Center the x-coordinate
+            let y = i as f32 - width as f32 / 2.0; // Center the y-coordinate
             let value = field.evaluate(x, y);
             array[i * width + j] = value;
+            bar.inc(1);
         }
     }
+    bar.finish();
 
     Sample {
         width,
@@ -141,7 +260,7 @@ pub fn sample<F: Field>(field: &F, width: usize, height: usize) -> Sample {
 }
 
 // Sample operations
-pub fn normalize(sample: &Sample) -> Sample {
+pub fn normalize_sample(sample: &Sample) -> Sample {
     let min = sample.array.iter().copied().fold(f32::INFINITY, f32::min);
     let max = sample
         .array

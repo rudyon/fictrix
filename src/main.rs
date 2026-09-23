@@ -1,29 +1,22 @@
 mod datapack;
 mod fields;
+mod indicators;
 use datapack::export_datapack;
-use fields::{Sample, abs, constant, normalize, opensimplex, sample, spline, sub};
+use fields::{
+    Sample, abs, add, clamp, constant, distance_to_point, mul, negate, normalize_field,
+    normalize_sample, opensimplex, sample, sub,
+};
 
 fn generate_elevation(seed: u32, world_size: usize) -> Sample {
-    let landcoverage = constant(0.33);
-
-    let continents_noise = abs(opensimplex(seed, 1.0, 4, 0.005, 2.0, 0.5));
-    let continents = sub(
-        spline(
-            continents_noise,
-            vec![
-                (0.0, 0.0, 0.0),
-                (0.6, 0.2, 1.0),
-                (0.8, 0.4, 1.0),
-                (1.0, 1.0, 1.0),
-            ],
-        ),
-        sub(constant(1.0), landcoverage),
+    println!(
+        "For your information, the world generation does not make sensible terrain yet. Like at all."
     );
+    let noise = opensimplex(seed, 1.0, 4, 0.005, 2.0, 0.5);
+    let landmask = sub(constant(world_size as f32), distance_to_point(0.0, 0.0));
 
-    let elevation = sample(&continents, world_size, world_size);
-    let elevation_normalized = normalize(&elevation);
+    let terrain = mul(noise, landmask);
 
-    elevation_normalized
+    normalize_sample(&sample(&terrain, world_size, world_size))
 }
 
 fn generate_biomes(elevation: &Sample) -> Vec<[u8; 4]> {
@@ -42,10 +35,12 @@ fn generate_biomes(elevation: &Sample) -> Vec<[u8; 4]> {
 
 fn main() {
     let seed = 0;
-    let world_size = 256;
+    let world_size = 1200;
 
+    println!("Generating world with size {}x{}", world_size, world_size);
     let elevation = generate_elevation(seed, world_size);
     let biomes = generate_biomes(&elevation);
 
     export_datapack("output/Fictrix", world_size, &elevation, biomes);
+    println!("Datapack exported");
 }
