@@ -1,18 +1,23 @@
 mod datapack;
 mod fields;
 use datapack::export_datapack;
-use fields::{OpenSimplex, Sample, abs, normalize, sample, spline};
+use fields::{Sample, abs, constant, normalize, opensimplex, sample, spline, sub};
 
 fn generate_elevation(seed: u32, world_size: usize) -> Sample {
-    let continents_noise = abs(OpenSimplex::new(seed, 32.0));
-    let continents = spline(
-        continents_noise,
-        vec![
-            (0.0, 0.0, 0.0),
-            (0.6, 0.2, 1.0),
-            (0.8, 0.4, 1.0),
-            (1.0, 1.0, 1.0),
-        ],
+    let landcoverage = constant(0.33);
+
+    let continents_noise = abs(opensimplex(seed, 1.0, 4, 0.005, 2.0, 0.5));
+    let continents = sub(
+        spline(
+            continents_noise,
+            vec![
+                (0.0, 0.0, 0.0),
+                (0.6, 0.2, 1.0),
+                (0.8, 0.4, 1.0),
+                (1.0, 1.0, 1.0),
+            ],
+        ),
+        sub(constant(1.0), landcoverage),
     );
 
     let elevation = sample(&continents, world_size, world_size);

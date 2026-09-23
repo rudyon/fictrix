@@ -1,4 +1,4 @@
-use noise::{NoiseFn, OpenSimplex as NoiseOpenSimplex};
+use noise::{Fbm, MultiFractal, NoiseFn};
 
 // Core trait
 pub trait Field {
@@ -7,8 +7,12 @@ pub trait Field {
 
 // Field implementations
 pub struct OpenSimplex {
-    noise: NoiseOpenSimplex,
-    pub scale: f32,
+    noise: Fbm<noise::OpenSimplex>,
+    amplitude: f32,
+}
+
+pub struct Constant {
+    value: f32,
 }
 
 pub struct Abs<F> {
@@ -17,23 +21,24 @@ pub struct Abs<F> {
 
 pub struct Spline<F> {
     field: F,
-    pub points: Vec<(f32, f32, f32)>,
+    points: Vec<(f32, f32, f32)>,
+}
+
+pub struct Sub<A, B> {
+    left: A,
+    right: B,
 }
 
 // Constructors / implementations
-impl OpenSimplex {
-    pub fn new(seed: u32, scale: f32) -> Self {
-        Self {
-            noise: NoiseOpenSimplex::new(seed),
-            scale,
-        }
+impl Field for OpenSimplex {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        self.noise.get([x as f64, y as f64]) as f32 * self.amplitude
     }
 }
 
-impl Field for OpenSimplex {
-    fn evaluate(&self, x: f32, y: f32) -> f32 {
-        self.noise
-            .get([x as f64 / self.scale as f64, y as f64 / self.scale as f64]) as f32
+impl Field for Constant {
+    fn evaluate(&self, _x: f32, _y: f32) -> f32 {
+        self.value
     }
 }
 
@@ -68,6 +73,34 @@ impl<F: Field> Field for Spline<F> {
     }
 }
 
+impl<A: Field, B: Field> Field for Sub<A, B> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        self.left.evaluate(x, y) - self.right.evaluate(x, y)
+    }
+}
+
+pub fn opensimplex(
+    seed: u32,
+    amplitude: f32,
+    octaves: usize,
+    frequency: f32,
+    lacunarity: f32,
+    persistence: f32,
+) -> OpenSimplex {
+    OpenSimplex {
+        noise: Fbm::<noise::OpenSimplex>::new(seed)
+            .set_octaves(octaves)
+            .set_frequency(frequency as f64)
+            .set_lacunarity(lacunarity as f64)
+            .set_persistence(persistence as f64),
+        amplitude,
+    }
+}
+
+pub fn constant(value: f32) -> Constant {
+    Constant { value }
+}
+
 // Field operations
 pub fn abs<F: Field>(field: F) -> Abs<F> {
     Abs { field }
@@ -75,6 +108,10 @@ pub fn abs<F: Field>(field: F) -> Abs<F> {
 
 pub fn spline<F: Field>(field: F, points: Vec<(f32, f32, f32)>) -> Spline<F> {
     Spline { field, points }
+}
+
+pub fn sub<A: Field, B: Field>(left: A, right: B) -> Sub<A, B> {
+    Sub { left, right }
 }
 
 // Sampling
