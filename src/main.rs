@@ -3,12 +3,13 @@ mod fields;
 mod indicators;
 use datapack::export_datapack;
 use fields::{
-    Axis, Field, Sample, Tiling, abs, add, clamp, constant, distance_to_point, div, gradient, mul,
-    negate, normalize_field, normalize_sample, opensimplex, sample, spline, sub,
+    Axis, Field, Sample, Tiling, abs, add, clamp, constant, debug_export, distance_to_point, div,
+    gradient, mul, negate, normalize_field, normalize_sample, opensimplex, sample, spline, sub,
 };
 
 fn generate_temperature(seed: u32, world_size: usize) -> Sample {
     let noise = opensimplex(seed, 1.0, 4, 0.005, 2.0, 0.5);
+    let noise_normalized = normalize_field(noise, 256, 256);
 
     // only supporting north pole for now
     let latitude = gradient(
@@ -16,11 +17,11 @@ fn generate_temperature(seed: u32, world_size: usize) -> Sample {
         Tiling::ClampedToEdge,
         (world_size as f32 * -1.0) / 2.0,
         world_size as f32 / 2.0,
-        1.0,
         0.0,
+        1.0,
     );
 
-    let temperature = mul(noise, latitude);
+    let temperature = mul(noise_normalized, latitude);
 
     normalize_sample(&sample(&temperature, world_size, world_size))
 }
@@ -74,13 +75,16 @@ fn generate_biomes(elevation: &Sample, temperature: &Sample) -> Vec<[u8; 4]> {
 
 fn main() {
     let seed = 0;
-    let world_size = 1200;
+    let world_size = 2400;
 
     println!("Generating world with size {}x{}", world_size, world_size);
+
     let temperature = generate_temperature(seed, world_size);
+    debug_export(&temperature, "temperature");
+
     let elevation = generate_elevation(seed, world_size);
     let biomes = generate_biomes(&elevation, &temperature);
 
-    export_datapack("output/Fictrix", world_size, &elevation, biomes);
+    export_datapack("Fictrix", world_size, &elevation, biomes);
     println!("Datapack exported");
 }

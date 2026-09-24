@@ -1,7 +1,10 @@
 use crate::fields::Sample;
-use image::{GrayImage, ImageBuffer, RgbaImage};
+use image::{GrayImage, ImageBuffer, Luma, Rgba, RgbaImage};
 use serde_json::{json, to_string_pretty};
-use std::{fs, path::Path};
+use std::{
+    fs::{create_dir_all, write},
+    path::Path,
+};
 
 pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes: Vec<[u8; 4]>) {
     let pack_mcmeta = json!({
@@ -66,33 +69,33 @@ pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes
             let index = (y as usize) * world_size + (x as usize);
             let value = elevation.array[index];
             let pixel_value = (value * 125.0) as u8;
-            image::Luma([pixel_value])
+            Luma([pixel_value])
         });
 
     let biomemap: RgbaImage = ImageBuffer::from_fn(world_size as u32, world_size as u32, |x, y| {
         let index = (y as usize) * world_size + (x as usize);
         let pixel_value = biomes[index];
-        image::Rgba(pixel_value)
+        Rgba(pixel_value)
     });
 
-    let export_path = Path::new(path);
+    let export_path = Path::new("output").join(path);
 
-    fs::create_dir_all(export_path.join("data/minecraft/dimension")).unwrap();
-    fs::create_dir_all(export_path.join("data/fictrix/novoatlas/map_info")).unwrap();
-    fs::create_dir_all(export_path.join("data/fictrix/novoatlas/heightmap")).unwrap();
-    fs::create_dir_all(export_path.join("data/fictrix/novoatlas/biome_map")).unwrap();
+    create_dir_all(export_path.join("data/minecraft/dimension")).unwrap();
+    create_dir_all(export_path.join("data/fictrix/novoatlas/map_info")).unwrap();
+    create_dir_all(export_path.join("data/fictrix/novoatlas/heightmap")).unwrap();
+    create_dir_all(export_path.join("data/fictrix/novoatlas/biome_map")).unwrap();
 
-    fs::write(
+    write(
         export_path.join("pack.mcmeta"),
         to_string_pretty(&pack_mcmeta).unwrap(),
     )
     .unwrap();
-    fs::write(
+    write(
         export_path.join("data/minecraft/dimension/overworld.json"),
         to_string_pretty(&dimension).unwrap(),
     )
     .unwrap();
-    fs::write(
+    write(
         export_path.join("data/fictrix/novoatlas/map_info/overworld.json"),
         to_string_pretty(&map_info).unwrap(),
     )

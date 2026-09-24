@@ -1,5 +1,7 @@
 use crate::indicators::progress_bar;
+use image::{ImageBuffer, Luma};
 use noise::{Fbm, MultiFractal, NoiseFn};
+use std::fs::create_dir_all;
 
 pub enum Axis {
     X,
@@ -372,4 +374,15 @@ pub fn normalize_sample(sample: &Sample) -> Sample {
         height: sample.height,
         array,
     }
+}
+
+pub fn debug_export(sample: &Sample, filename: &str) {
+    let img = ImageBuffer::from_fn(sample.width as u32, sample.height as u32, |x, y| {
+        let index = (y as usize) * sample.width + (x as usize);
+        let value = (sample.array[index] * 255.0).clamp(0.0, 255.0) as u8;
+        Luma([value])
+    });
+
+    create_dir_all("output/debug").unwrap();
+    img.save(format!("output/debug/{}.png", filename)).unwrap();
 }
