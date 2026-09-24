@@ -68,7 +68,7 @@ pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes
         ImageBuffer::from_fn(world_size as u32, world_size as u32, |x, y| {
             let index = (y as usize) * world_size + (x as usize);
             let value = elevation.array[index];
-            let pixel_value = (value * 125.0) as u8;
+            let pixel_value = (value * 255.0) as u8;
             Luma([pixel_value])
         });
 

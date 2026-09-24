@@ -8,7 +8,7 @@ use fields::{
 };
 
 fn generate_temperature(seed: u32, world_size: usize) -> Sample {
-    let noise = opensimplex(seed, 1.0, 4, 0.005, 2.0, 0.5);
+    let noise = opensimplex(seed + 1, 1.0, 4, 0.005, 2.0, 0.5);
     let noise_normalized = normalize_field(noise, 256, 256);
 
     // only supporting north pole for now
@@ -80,8 +80,6 @@ fn main() {
     println!("Generating world with size {}x{}", world_size, world_size);
 
     let temperature = generate_temperature(seed, world_size);
-    debug_export(&temperature, "temperature");
-
     let elevation = generate_elevation(seed, world_size);
     let biomes = generate_biomes(&elevation, &temperature);
 
