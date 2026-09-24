@@ -20,7 +20,7 @@ pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes
             "settings": "minecraft:overworld",
             "underground_density_function": "novoatlas:caves",
             "biome_source": {
-                "type": "novoatlas:biome_cell_color_map",
+                "type": "novoatlas:color_map",
                 "map_info": "fictrix:overworld",
                 "default_biome": "minecraft:the_void"
             }
@@ -49,7 +49,7 @@ pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes
         ImageBuffer::from_fn(world_size as u32, world_size as u32, |x, y| {
             let index = (y as usize) * world_size + (x as usize);
             let value = elevation.array[index];
-            let pixel_value = (value * 255.0) as u8;
+            let pixel_value = (value * 125.0) as u8;
             image::Luma([pixel_value])
         });
 

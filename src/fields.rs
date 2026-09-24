@@ -60,6 +60,11 @@ pub struct Clamp<F> {
     max: f32,
 }
 
+pub struct Div<A, B> {
+    left: A,
+    right: B,
+}
+
 // Constructors / implementations
 impl Field for OpenSimplex {
     fn evaluate(&self, x: f32, y: f32) -> f32 {
@@ -150,6 +155,12 @@ impl<F: Field> Field for Clamp<F> {
     }
 }
 
+impl<A: Field, B: Field> Field for Div<A, B> {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        self.left.evaluate(x, y) / self.right.evaluate(x, y)
+    }
+}
+
 pub fn opensimplex(
     seed: u32,
     amplitude: f32,
@@ -228,6 +239,10 @@ pub fn add<A: Field, B: Field>(left: A, right: B) -> Add<A, B> {
 
 pub fn clamp<F: Field>(field: F, min: f32, max: f32) -> Clamp<F> {
     Clamp { field, min, max }
+}
+
+pub fn div<A: Field, B: Field>(left: A, right: B) -> Div<A, B> {
+    Div { left, right }
 }
 
 // Sampling
