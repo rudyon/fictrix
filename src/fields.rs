@@ -1,6 +1,17 @@
 use crate::indicators::progress_bar;
 use noise::{Fbm, MultiFractal, NoiseFn};
 
+pub enum Axis {
+    X,
+    Y,
+}
+
+pub enum Tiling {
+    ClampedToEdge,
+    Repeat,
+    MirrorRepeat,
+}
+
 // Core trait
 pub trait Field {
     fn evaluate(&self, x: f32, y: f32) -> f32;
@@ -18,6 +29,15 @@ pub struct Constant {
 
 pub struct DistanceToPoint {
     point: (f32, f32),
+}
+
+pub struct Gradient {
+    axis: Axis,
+    tiling: Tiling,
+    from_coord: f32,
+    to_coord: f32,
+    from_value: f32,
+    to_value: f32,
 }
 
 pub struct NormalizedField<F> {
@@ -83,6 +103,46 @@ impl Field for DistanceToPoint {
         let dx = x - self.point.0;
         let dy = y - self.point.1;
         (dx * dx + dy * dy).sqrt()
+    }
+}
+
+impl Field for Gradient {
+    fn evaluate(&self, x: f32, y: f32) -> f32 {
+        let coord = match self.axis {
+            Axis::X => x,
+            Axis::Y => y,
+        };
+
+        let t = match self.tiling {
+            Tiling::ClampedToEdge => {
+                if coord <= self.from_coord {
+                    0.0
+                } else if coord >= self.to_coord {
+                    1.0
+                } else {
+                    (coord - self.from_coord) / (self.to_coord - self.from_coord)
+                }
+            }
+            Tiling::Repeat => {
+                let range = self.to_coord - self.from_coord;
+                let wrapped_coord =
+                    ((coord - self.from_coord) % range + range) % range + self.from_coord;
+                (wrapped_coord - self.from_coord) / range
+            }
+            Tiling::MirrorRepeat => {
+                let range = self.to_coord - self.from_coord;
+                let wrapped_coord =
+                    ((coord - self.from_coord) % (2.0 * range) + (2.0 * range)) % (2.0 * range);
+                let mirrored_coord = if wrapped_coord < range {
+                    wrapped_coord
+                } else {
+                    2.0 * range - wrapped_coord
+                };
+                (mirrored_coord + self.from_coord) / range
+            }
+        };
+
+        self.from_value + t * (self.to_value - self.from_value)
     }
 }
 
@@ -185,6 +245,24 @@ pub fn constant(value: f32) -> Constant {
 
 pub fn distance_to_point(x: f32, y: f32) -> DistanceToPoint {
     DistanceToPoint { point: (x, y) }
+}
+
+pub fn gradient(
+    axis: Axis,
+    tiling: Tiling,
+    from_coord: f32,
+    to_coord: f32,
+    from_value: f32,
+    to_value: f32,
+) -> Gradient {
+    Gradient {
+        axis,
+        tiling,
+        from_coord,
+        to_coord,
+        from_value,
+        to_value,
+    }
 }
 
 // Field operations

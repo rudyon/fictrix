@@ -34,12 +34,28 @@ pub fn export_datapack(path: &str, world_size: usize, elevation: &Sample, biomes
             "map": "fictrix:overworld",
             "biomes": [
                 {
-                    "biome": "minecraft:plains",
+                    "biome": "minecraft:ocean",
+                    "color": "#0000ff"
+                },
+                {
+                    "biome": "minecraft:beach",
+                    "color": "#ffff00"
+                },
+                {
+                    "biome": "minecraft:snowy_taiga",
+                    "color": "#aaffaa"
+                },
+                {
+                    "biome": "minecraft:forest",
                     "color": "#00ff00"
                 },
                 {
-                    "biome": "minecraft:ocean",
-                    "color": "#0000ff"
+                    "biome": "minecraft:frozen_peaks",
+                    "color": "#ffffff"
+                },
+                {
+                    "biome": "minecraft:stony_peaks",
+                    "color": "#888888"
                 }
             ]
         }
